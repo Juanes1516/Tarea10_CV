@@ -757,7 +757,7 @@ void Tutorial21_RayTracing::UpdateUI()
         for (int i = 0; i < NumCubes; ++i)
         {
             ImGui::Checkbox(("Cube " + std::to_string(i + 1)).c_str(), &m_EnableCubes[i]);
-            if ((i + 1) % 8 != 0) // ejemplo de dos filas de 8
+            if ((i + 1) % 8 != 0) 
                 ImGui::SameLine();
         }
 
