@@ -13,16 +13,6 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *
- *  In no event and under no legal theory, whether in tort (including negligence),
- *  contract, or otherwise, unless required by applicable law (such as deliberate
- *  and grossly negligent acts) or agreed to in writing, shall any Contributor be
- *  liable for any damages, including any direct, indirect, special, incidental,
- *  or consequential damages of any character arising as a result of this License or
- *  out of the use or inability to use the software (including but not limited to damages
- *  for loss of goodwill, work stoppage, computer failure or malfunction, or any and
- *  all other commercial damages or losses), even if such Contributor has been advised
- *  of the possibility of such damages.
  */
 
 #include "Tutorial21_RayTracing.hpp"
@@ -44,15 +34,12 @@ SampleBase* CreateSample()
     return new Tutorial21_RayTracing();
 }
 
+
 void Tutorial21_RayTracing::CreateGraphicsPSO()
 {
-    // Create graphics pipeline to blit render target into swapchain image.
-
     GraphicsPipelineStateCreateInfo PSOCreateInfo;
-
-    PSOCreateInfo.PSODesc.Name         = "Image blit PSO";
-    PSOCreateInfo.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
-
+    PSOCreateInfo.PSODesc.Name                                  = "Image blit PSO";
+    PSOCreateInfo.PSODesc.PipelineType                          = PIPELINE_TYPE_GRAPHICS;
     PSOCreateInfo.GraphicsPipeline.NumRenderTargets             = 1;
     PSOCreateInfo.GraphicsPipeline.RTVFormats[0]                = m_pSwapChain->GetDesc().ColorBufferFormat;
     PSOCreateInfo.GraphicsPipeline.PrimitiveTopology            = PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
@@ -64,7 +51,6 @@ void Tutorial21_RayTracing::CreateGraphicsPSO()
     ShaderCI.ShaderCompiler = SHADER_COMPILER_DXC;
     ShaderCI.CompileFlags   = SHADER_COMPILE_FLAG_PACK_MATRIX_ROW_MAJOR;
 
-    // Create a shader source stream factory to load shaders from files.
     RefCntAutoPtr<IShaderSourceInputStreamFactory> pShaderSourceFactory;
     m_pEngineFactory->CreateDefaultShaderSourceStreamFactory(nullptr, &pShaderSourceFactory);
     ShaderCI.pShaderSourceStreamFactory = pShaderSourceFactory;
@@ -89,14 +75,12 @@ void Tutorial21_RayTracing::CreateGraphicsPSO()
         VERIFY_EXPR(pPS != nullptr);
     }
 
-    PSOCreateInfo.pVS = pVS;
-    PSOCreateInfo.pPS = pPS;
-
+    PSOCreateInfo.pVS                                        = pVS;
+    PSOCreateInfo.pPS                                        = pPS;
     PSOCreateInfo.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC;
 
     m_pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pImageBlitPSO);
     VERIFY_EXPR(m_pImageBlitPSO != nullptr);
-
     m_pImageBlitPSO->CreateShaderResourceBinding(&m_pImageBlitSRB, true);
     VERIFY_EXPR(m_pImageBlitSRB != nullptr);
 }
@@ -105,41 +89,25 @@ void Tutorial21_RayTracing::CreateRayTracingPSO()
 {
     m_MaxRecursionDepth = std::min(m_MaxRecursionDepth, m_pDevice->GetAdapterInfo().RayTracing.MaxRecursionDepth);
 
-    // Prepare ray tracing pipeline description.
     RayTracingPipelineStateCreateInfoX PSOCreateInfo;
-
     PSOCreateInfo.PSODesc.Name         = "Ray tracing PSO";
     PSOCreateInfo.PSODesc.PipelineType = PIPELINE_TYPE_RAY_TRACING;
 
-    // Define shader macros
     ShaderMacroHelper Macros;
     Macros.AddShaderMacro("NUM_TEXTURES", NumTextures);
 
     ShaderCreateInfo ShaderCI;
-    // We will not be using combined texture samplers as they
-    // are only required for compatibility with OpenGL, and ray
-    // tracing is not supported in OpenGL backend.
     ShaderCI.Desc.UseCombinedTextureSamplers = false;
+    ShaderCI.Macros                          = Macros;
+    ShaderCI.ShaderCompiler                  = SHADER_COMPILER_DXC;
+    ShaderCI.CompileFlags                    = SHADER_COMPILE_FLAG_PACK_MATRIX_ROW_MAJOR;
+    ShaderCI.HLSLVersion                     = {6, 3};
+    ShaderCI.SourceLanguage                  = SHADER_SOURCE_LANGUAGE_HLSL;
 
-    ShaderCI.Macros = Macros;
-
-    // Only new DXC compiler can compile HLSL ray tracing shaders.
-    ShaderCI.ShaderCompiler = SHADER_COMPILER_DXC;
-
-    // Use row-major matrices.
-    ShaderCI.CompileFlags = SHADER_COMPILE_FLAG_PACK_MATRIX_ROW_MAJOR;
-
-    // Shader model 6.3 is required for DXR 1.0, shader model 6.5 is required for DXR 1.1 and enables additional features.
-    // Use 6.3 for compatibility with DXR 1.0 and VK_NV_ray_tracing.
-    ShaderCI.HLSLVersion    = {6, 3};
-    ShaderCI.SourceLanguage = SHADER_SOURCE_LANGUAGE_HLSL;
-
-    // Create a shader source stream factory to load shaders from files.
     RefCntAutoPtr<IShaderSourceInputStreamFactory> pShaderSourceFactory;
     m_pEngineFactory->CreateDefaultShaderSourceStreamFactory(nullptr, &pShaderSourceFactory);
     ShaderCI.pShaderSourceStreamFactory = pShaderSourceFactory;
 
-    // Create ray generation shader.
     RefCntAutoPtr<IShader> pRayGen;
     {
         ShaderCI.Desc.ShaderType = SHADER_TYPE_RAY_GEN;
@@ -150,7 +118,6 @@ void Tutorial21_RayTracing::CreateRayTracingPSO()
         VERIFY_EXPR(pRayGen != nullptr);
     }
 
-    // Create miss shaders.
     RefCntAutoPtr<IShader> pPrimaryMiss, pShadowMiss;
     {
         ShaderCI.Desc.ShaderType = SHADER_TYPE_RAY_MISS;
@@ -167,7 +134,6 @@ void Tutorial21_RayTracing::CreateRayTracingPSO()
         VERIFY_EXPR(pShadowMiss != nullptr);
     }
 
-    // Create closest hit shaders.
     RefCntAutoPtr<IShader> pCubePrimaryHit, pGroundHit, pGlassPrimaryHit, pSpherePrimaryHit;
     {
         ShaderCI.Desc.ShaderType = SHADER_TYPE_RAY_CLOSEST_HIT;
@@ -196,7 +162,6 @@ void Tutorial21_RayTracing::CreateRayTracingPSO()
         VERIFY_EXPR(pSpherePrimaryHit != nullptr);
     }
 
-    // Create intersection shader for a procedural sphere.
     RefCntAutoPtr<IShader> pSphereIntersection;
     {
         ShaderCI.Desc.ShaderType = SHADER_TYPE_RAY_INTERSECTION;
@@ -207,52 +172,32 @@ void Tutorial21_RayTracing::CreateRayTracingPSO()
         VERIFY_EXPR(pSphereIntersection != nullptr);
     }
 
-    // Setup shader groups
-
-    // Ray generation shader is an entry point for a ray tracing pipeline.
     PSOCreateInfo.AddGeneralShader("Main", pRayGen);
-    // Primary ray miss shader.
     PSOCreateInfo.AddGeneralShader("PrimaryMiss", pPrimaryMiss);
-    // Shadow ray miss shader.
     PSOCreateInfo.AddGeneralShader("ShadowMiss", pShadowMiss);
 
-    // Primary ray hit group for the textured cube.
     PSOCreateInfo.AddTriangleHitShader("CubePrimaryHit", pCubePrimaryHit);
-    // Primary ray hit group for the ground.
     PSOCreateInfo.AddTriangleHitShader("GroundHit", pGroundHit);
-    // Primary ray hit group for the glass cube.
     PSOCreateInfo.AddTriangleHitShader("GlassPrimaryHit", pGlassPrimaryHit);
 
-    // Intersection and closest hit shaders for the procedural sphere.
     PSOCreateInfo.AddProceduralHitShader("SpherePrimaryHit", pSphereIntersection, pSpherePrimaryHit);
-    // Only intersection shader is needed for shadows.
     PSOCreateInfo.AddProceduralHitShader("SphereShadowHit", pSphereIntersection);
 
-    // Specify the maximum ray recursion depth.
-    // WARNING: the driver does not track the recursion depth and it is the
-    //          application's responsibility to not exceed the specified limit.
-    //          The value is used to reserve the necessary stack size and
-    //          exceeding it will likely result in driver crash.
     PSOCreateInfo.RayTracingPipeline.MaxRecursionDepth = static_cast<Uint8>(m_MaxRecursionDepth);
+    PSOCreateInfo.RayTracingPipeline.ShaderRecordSize  = 0;
+    PSOCreateInfo.MaxAttributeSize                     = std::max<Uint32>(sizeof(float2), sizeof(HLSL::ProceduralGeomIntersectionAttribs));
+    PSOCreateInfo.MaxPayloadSize                       = std::max<Uint32>(sizeof(HLSL::PrimaryRayPayload), sizeof(HLSL::ShadowRayPayload));
 
-    // Per-shader data is not used.
-    PSOCreateInfo.RayTracingPipeline.ShaderRecordSize = 0;
-
-    // DirectX 12 only: set attribute and payload size. Values should be as small as possible to minimize the memory usage.
-    PSOCreateInfo.MaxAttributeSize = std::max<Uint32>(sizeof(/*BuiltInTriangleIntersectionAttributes*/ float2), sizeof(HLSL::ProceduralGeomIntersectionAttribs));
-    PSOCreateInfo.MaxPayloadSize   = std::max<Uint32>(sizeof(HLSL::PrimaryRayPayload), sizeof(HLSL::ShadowRayPayload));
-
-    // Define immutable sampler for g_Texture and g_GroundTexture. Immutable samplers should be used whenever possible
     SamplerDesc SamLinearWrapDesc{
         FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR, FILTER_TYPE_LINEAR,
-        TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP //
-    };
+        TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP, TEXTURE_ADDRESS_WRAP};
 
     PipelineResourceLayoutDescX ResourceLayout;
     ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE;
     ResourceLayout.AddImmutableSampler(SHADER_TYPE_RAY_CLOSEST_HIT, "g_SamLinearWrap", SamLinearWrapDesc);
     ResourceLayout
-        .AddVariable(SHADER_TYPE_RAY_GEN | SHADER_TYPE_RAY_MISS | SHADER_TYPE_RAY_CLOSEST_HIT, "g_ConstantsCB", SHADER_RESOURCE_VARIABLE_TYPE_STATIC)
+        .AddVariable(SHADER_TYPE_RAY_GEN | SHADER_TYPE_RAY_MISS | SHADER_TYPE_RAY_CLOSEST_HIT,
+                     "g_ConstantsCB", SHADER_RESOURCE_VARIABLE_TYPE_STATIC)
         .AddVariable(SHADER_TYPE_RAY_GEN, "g_ColorBuffer", SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC);
 
     PSOCreateInfo.PSODesc.ResourceLayout = ResourceLayout;
@@ -270,45 +215,36 @@ void Tutorial21_RayTracing::CreateRayTracingPSO()
 
 void Tutorial21_RayTracing::LoadTextures()
 {
-    // Load textures
     IDeviceObject*          pTexSRVs[NumTextures] = {};
     RefCntAutoPtr<ITexture> pTex[NumTextures];
     StateTransitionDesc     Barriers[NumTextures];
     for (int tex = 0; tex < NumTextures; ++tex)
     {
-        // Load current texture
         TextureLoadInfo loadInfo;
         loadInfo.IsSRGB = true;
-
-        std::stringstream FileNameSS;
-        FileNameSS << "DGLogo" << tex << ".png";
-        auto FileName = FileNameSS.str();
-        CreateTextureFromFile(FileName.c_str(), loadInfo, m_pDevice, &pTex[tex]);
-
-        // Get shader resource view from the texture
-        auto* pTextureSRV = pTex[tex]->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
-        pTexSRVs[tex]     = pTextureSRV;
+        std::stringstream ss;
+        ss << "DGLogo" << tex << ".png";
+        CreateTextureFromFile(ss.str().c_str(), loadInfo, m_pDevice, &pTex[tex]);
+        ITextureView* srv = pTex[tex]->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE);
+        pTexSRVs[tex]     = srv;
         Barriers[tex]     = StateTransitionDesc{pTex[tex], RESOURCE_STATE_UNKNOWN, RESOURCE_STATE_SHADER_RESOURCE, STATE_TRANSITION_FLAG_UPDATE_STATE};
     }
     m_pImmediateContext->TransitionResourceStates(_countof(Barriers), Barriers);
-
-
     m_pRayTracingSRB->GetVariableByName(SHADER_TYPE_RAY_CLOSEST_HIT, "g_CubeTextures")->SetArray(pTexSRVs, 0, NumTextures);
 
-    // Load ground texture
     RefCntAutoPtr<ITexture> pGroundTex;
     CreateTextureFromFile("Ground.jpg", TextureLoadInfo{}, m_pDevice, &pGroundTex);
-
-    m_pRayTracingSRB->GetVariableByName(SHADER_TYPE_RAY_CLOSEST_HIT, "g_GroundTexture")->Set(pGroundTex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE));
+    m_pRayTracingSRB->GetVariableByName(SHADER_TYPE_RAY_CLOSEST_HIT, "g_GroundTexture")
+        ->Set(pGroundTex->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE));
 }
 
 void Tutorial21_RayTracing::CreateCubeBLAS()
 {
-    RefCntAutoPtr<IDataBlob> pCubeVerts;
-    RefCntAutoPtr<IDataBlob> pCubeIndices;
+    RefCntAutoPtr<IDataBlob> pCubeVerts, pCubeIndices;
     GeometryPrimitiveInfo    CubeGeoInfo;
     constexpr float          CubeSize = 2.f;
-    CreateGeometryPrimitive(CubeGeometryPrimitiveAttributes{CubeSize, GEOMETRY_PRIMITIVE_VERTEX_FLAG_ALL}, &pCubeVerts, &pCubeIndices, &CubeGeoInfo);
+    CreateGeometryPrimitive(CubeGeometryPrimitiveAttributes{CubeSize, GEOMETRY_PRIMITIVE_VERTEX_FLAG_ALL},
+                            &pCubeVerts, &pCubeIndices, &CubeGeoInfo);
 
     struct CubeVertex
     {
@@ -320,391 +256,291 @@ void Tutorial21_RayTracing::CreateCubeBLAS()
     const CubeVertex* pVerts   = pCubeVerts->GetConstDataPtr<CubeVertex>();
     const Uint32*     pIndices = pCubeIndices->GetConstDataPtr<Uint32>();
 
-    // Create a buffer with cube attributes.
-    // These attributes will be used in the hit shader to calculate UVs and normal for intersection point.
     {
-        HLSL::CubeAttribs Attribs;
+        HLSL::CubeAttribs Attribs{};
         for (Uint32 v = 0; v < CubeGeoInfo.NumVertices; ++v)
         {
             Attribs.UVs[v]     = {pVerts[v].UV, 0, 0};
             Attribs.Normals[v] = pVerts[v].Normal;
         }
-
         for (Uint32 i = 0; i < CubeGeoInfo.NumIndices; i += 3)
         {
-            const Uint32* TriIdx{&pIndices[i]};
-            Attribs.Primitives[i / 3] = uint4{TriIdx[0], TriIdx[1], TriIdx[2], 0};
+            const Uint32* tri         = &pIndices[i];
+            Attribs.Primitives[i / 3] = uint4{tri[0], tri[1], tri[2], 0};
         }
-
         BufferDesc BuffDesc;
         BuffDesc.Name      = "Cube Attribs";
         BuffDesc.Usage     = USAGE_IMMUTABLE;
         BuffDesc.BindFlags = BIND_UNIFORM_BUFFER;
         BuffDesc.Size      = sizeof(Attribs);
-
         BufferData BufData = {&Attribs, BuffDesc.Size};
-
         m_pDevice->CreateBuffer(BuffDesc, &BufData, &m_CubeAttribsCB);
-        VERIFY_EXPR(m_CubeAttribsCB != nullptr);
-
-        m_pRayTracingSRB->GetVariableByName(SHADER_TYPE_RAY_CLOSEST_HIT, "g_CubeAttribsCB")->Set(m_CubeAttribsCB);
+        VERIFY_EXPR(m_CubeAttribsCB);
+        m_pRayTracingSRB->GetVariableByName(SHADER_TYPE_RAY_CLOSEST_HIT, "g_CubeAttribsCB")
+            ->Set(m_CubeAttribsCB);
     }
 
-    // Create vertex and index buffers
-    RefCntAutoPtr<IBuffer>             pCubeVertexBuffer;
-    RefCntAutoPtr<IBuffer>             pCubeIndexBuffer;
+    RefCntAutoPtr<IBuffer>             pCubeVertexBuffer, pCubeIndexBuffer;
     GeometryPrimitiveBuffersCreateInfo CubeBuffersCI;
     CubeBuffersCI.VertexBufferBindFlags = BIND_RAY_TRACING;
     CubeBuffersCI.IndexBufferBindFlags  = BIND_RAY_TRACING;
-    CreateGeometryPrimitiveBuffers(m_pDevice, CubeGeometryPrimitiveAttributes{CubeSize, GEOMETRY_PRIMITIVE_VERTEX_FLAG_POSITION},
+    CreateGeometryPrimitiveBuffers(m_pDevice,
+                                   CubeGeometryPrimitiveAttributes{CubeSize, GEOMETRY_PRIMITIVE_VERTEX_FLAG_POSITION},
                                    &CubeBuffersCI, &pCubeVertexBuffer, &pCubeIndexBuffer);
 
-    // Create & build bottom level acceleration structure
     {
-        // Create BLAS
-        BLASTriangleDesc Triangles;
-        {
-            Triangles.GeometryName         = "Cube";
-            Triangles.MaxVertexCount       = CubeGeoInfo.NumVertices;
-            Triangles.VertexValueType      = VT_FLOAT32;
-            Triangles.VertexComponentCount = 3;
-            Triangles.MaxPrimitiveCount    = CubeGeoInfo.NumIndices / 3;
-            Triangles.IndexType            = VT_UINT32;
+        BLASTriangleDesc Tri;
+        Tri.GeometryName         = "Cube";
+        Tri.MaxVertexCount       = CubeGeoInfo.NumVertices;
+        Tri.VertexValueType      = VT_FLOAT32;
+        Tri.VertexComponentCount = 3;
+        Tri.MaxPrimitiveCount    = CubeGeoInfo.NumIndices / 3;
+        Tri.IndexType            = VT_UINT32;
+        BottomLevelASDesc ASDesc;
+        ASDesc.Name          = "Cube BLAS";
+        ASDesc.Flags         = RAYTRACING_BUILD_AS_PREFER_FAST_TRACE;
+        ASDesc.pTriangles    = &Tri;
+        ASDesc.TriangleCount = 1;
+        m_pDevice->CreateBLAS(ASDesc, &m_pCubeBLAS);
+        VERIFY_EXPR(m_pCubeBLAS);
 
-            BottomLevelASDesc ASDesc;
-            ASDesc.Name          = "Cube BLAS";
-            ASDesc.Flags         = RAYTRACING_BUILD_AS_PREFER_FAST_TRACE;
-            ASDesc.pTriangles    = &Triangles;
-            ASDesc.TriangleCount = 1;
+        BufferDesc ScratchDesc;
+        ScratchDesc.Name      = "BLAS Scratch Buffer";
+        ScratchDesc.Usage     = USAGE_DEFAULT;
+        ScratchDesc.BindFlags = BIND_RAY_TRACING;
+        ScratchDesc.Size      = m_pCubeBLAS->GetScratchBufferSizes().Build;
+        RefCntAutoPtr<IBuffer> pScratch;
+        m_pDevice->CreateBuffer(ScratchDesc, nullptr, &pScratch);
 
-            m_pDevice->CreateBLAS(ASDesc, &m_pCubeBLAS);
-            VERIFY_EXPR(m_pCubeBLAS != nullptr);
-        }
-
-        // Create scratch buffer
-        RefCntAutoPtr<IBuffer> pScratchBuffer;
-        {
-            BufferDesc BuffDesc;
-            BuffDesc.Name      = "BLAS Scratch Buffer";
-            BuffDesc.Usage     = USAGE_DEFAULT;
-            BuffDesc.BindFlags = BIND_RAY_TRACING;
-            BuffDesc.Size      = m_pCubeBLAS->GetScratchBufferSizes().Build;
-
-            m_pDevice->CreateBuffer(BuffDesc, nullptr, &pScratchBuffer);
-            VERIFY_EXPR(pScratchBuffer != nullptr);
-        }
-
-        // Build BLAS
-        BLASBuildTriangleData TriangleData;
-        TriangleData.GeometryName         = Triangles.GeometryName;
-        TriangleData.pVertexBuffer        = pCubeVertexBuffer;
-        TriangleData.VertexStride         = sizeof(float3);
-        TriangleData.VertexCount          = Triangles.MaxVertexCount;
-        TriangleData.VertexValueType      = Triangles.VertexValueType;
-        TriangleData.VertexComponentCount = Triangles.VertexComponentCount;
-        TriangleData.pIndexBuffer         = pCubeIndexBuffer;
-        TriangleData.PrimitiveCount       = Triangles.MaxPrimitiveCount;
-        TriangleData.IndexType            = Triangles.IndexType;
-        TriangleData.Flags                = RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+        BLASBuildTriangleData TriData;
+        TriData.GeometryName         = Tri.GeometryName;
+        TriData.pVertexBuffer        = pCubeVertexBuffer;
+        TriData.VertexStride         = sizeof(float3);
+        TriData.VertexCount          = Tri.MaxVertexCount;
+        TriData.VertexValueType      = Tri.VertexValueType;
+        TriData.VertexComponentCount = Tri.VertexComponentCount;
+        TriData.pIndexBuffer         = pCubeIndexBuffer;
+        TriData.PrimitiveCount       = Tri.MaxPrimitiveCount;
+        TriData.IndexType            = Tri.IndexType;
+        TriData.Flags                = RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
         BuildBLASAttribs Attribs;
-        Attribs.pBLAS             = m_pCubeBLAS;
-        Attribs.pTriangleData     = &TriangleData;
-        Attribs.TriangleDataCount = 1;
-
-        // Scratch buffer will be used to store temporary data during BLAS build.
-        // Previous content in the scratch buffer will be discarded.
-        Attribs.pScratchBuffer = pScratchBuffer;
-
-        // Allow engine to change resource states.
+        Attribs.pBLAS                       = m_pCubeBLAS;
+        Attribs.pTriangleData               = &TriData;
+        Attribs.TriangleDataCount           = 1;
+        Attribs.pScratchBuffer              = pScratch;
         Attribs.BLASTransitionMode          = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
         Attribs.GeometryTransitionMode      = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
         Attribs.ScratchBufferTransitionMode = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
-
         m_pImmediateContext->BuildBLAS(Attribs);
     }
 }
 
 void Tutorial21_RayTracing::CreateProceduralBLAS()
 {
-    static_assert(sizeof(HLSL::BoxAttribs) % 16 == 0, "BoxAttribs must be aligned by 16 bytes");
+    static_assert(sizeof(HLSL::BoxAttribs) % 16 == 0, "");
+    const HLSL::BoxAttribs Boxes[] = {{-2.5f, -2.5f, -2.5f, 2.5f, 2.5f, 2.5f}};
 
-    const HLSL::BoxAttribs Boxes[] = {HLSL::BoxAttribs{-2.5f, -2.5f, -2.5f, 2.5f, 2.5f, 2.5f}};
+    BufferDesc BoxDesc;
+    BoxDesc.Name              = "AABB Buffer";
+    BoxDesc.Usage             = USAGE_IMMUTABLE;
+    BoxDesc.BindFlags         = BIND_RAY_TRACING | BIND_SHADER_RESOURCE;
+    BoxDesc.Size              = sizeof(Boxes);
+    BoxDesc.ElementByteStride = sizeof(Boxes[0]);
+    BoxDesc.Mode              = BUFFER_MODE_STRUCTURED;
+    BufferData BoxData        = {Boxes, sizeof(Boxes)};
+    m_pDevice->CreateBuffer(BoxDesc, &BoxData, &m_BoxAttribsCB);
+    VERIFY_EXPR(m_BoxAttribsCB);
+    m_pRayTracingSRB->GetVariableByName(SHADER_TYPE_RAY_INTERSECTION, "g_BoxAttribs")
+        ->Set(m_BoxAttribsCB->GetDefaultView(BUFFER_VIEW_SHADER_RESOURCE));
 
-    // Create box buffer
-    {
-        BufferData BufData = {Boxes, sizeof(Boxes)};
-        BufferDesc BuffDesc;
-        BuffDesc.Name              = "AABB Buffer";
-        BuffDesc.Usage             = USAGE_IMMUTABLE;
-        BuffDesc.BindFlags         = BIND_RAY_TRACING | BIND_SHADER_RESOURCE;
-        BuffDesc.Size              = sizeof(Boxes);
-        BuffDesc.ElementByteStride = sizeof(Boxes[0]);
-        BuffDesc.Mode              = BUFFER_MODE_STRUCTURED;
+    BLASBoundingBoxDesc BoxInfo;
+    BoxInfo.GeometryName = "Box";
+    BoxInfo.MaxBoxCount  = 1;
+    BottomLevelASDesc ASDesc;
+    ASDesc.Name     = "Procedural BLAS";
+    ASDesc.Flags    = RAYTRACING_BUILD_AS_PREFER_FAST_TRACE;
+    ASDesc.pBoxes   = &BoxInfo;
+    ASDesc.BoxCount = 1;
+    m_pDevice->CreateBLAS(ASDesc, &m_pProceduralBLAS);
+    VERIFY_EXPR(m_pProceduralBLAS);
 
-        m_pDevice->CreateBuffer(BuffDesc, &BufData, &m_BoxAttribsCB);
-        VERIFY_EXPR(m_BoxAttribsCB != nullptr);
+    BufferDesc ScratchDesc;
+    ScratchDesc.Name      = "BLAS Scratch Buffer";
+    ScratchDesc.Usage     = USAGE_DEFAULT;
+    ScratchDesc.BindFlags = BIND_RAY_TRACING;
+    ScratchDesc.Size      = m_pProceduralBLAS->GetScratchBufferSizes().Build;
+    RefCntAutoPtr<IBuffer> pScratch;
+    m_pDevice->CreateBuffer(ScratchDesc, nullptr, &pScratch);
 
-        m_pRayTracingSRB->GetVariableByName(SHADER_TYPE_RAY_INTERSECTION, "g_BoxAttribs")->Set(m_BoxAttribsCB->GetDefaultView(BUFFER_VIEW_SHADER_RESOURCE));
-    }
+    BLASBuildBoundingBoxData BoxDataDesc;
+    BoxDataDesc.GeometryName = BoxInfo.GeometryName;
+    BoxDataDesc.BoxCount     = 1;
+    BoxDataDesc.BoxStride    = sizeof(Boxes[0]);
+    BoxDataDesc.pBoxBuffer   = m_BoxAttribsCB;
 
-    // Create & build bottom level acceleration structure
-    {
-        // Create BLAS
-        BLASBoundingBoxDesc BoxInfo;
-        {
-            BoxInfo.GeometryName = "Box";
-            BoxInfo.MaxBoxCount  = 1;
-
-            BottomLevelASDesc ASDesc;
-            ASDesc.Name     = "Procedural BLAS";
-            ASDesc.Flags    = RAYTRACING_BUILD_AS_PREFER_FAST_TRACE;
-            ASDesc.pBoxes   = &BoxInfo;
-            ASDesc.BoxCount = 1;
-
-            m_pDevice->CreateBLAS(ASDesc, &m_pProceduralBLAS);
-            VERIFY_EXPR(m_pProceduralBLAS != nullptr);
-        }
-
-        // Create scratch buffer
-        RefCntAutoPtr<IBuffer> pScratchBuffer;
-        {
-            BufferDesc BuffDesc;
-            BuffDesc.Name      = "BLAS Scratch Buffer";
-            BuffDesc.Usage     = USAGE_DEFAULT;
-            BuffDesc.BindFlags = BIND_RAY_TRACING;
-            BuffDesc.Size      = m_pProceduralBLAS->GetScratchBufferSizes().Build;
-
-            m_pDevice->CreateBuffer(BuffDesc, nullptr, &pScratchBuffer);
-            VERIFY_EXPR(pScratchBuffer != nullptr);
-        }
-
-        // Build BLAS
-        BLASBuildBoundingBoxData BoxData;
-        BoxData.GeometryName = BoxInfo.GeometryName;
-        BoxData.BoxCount     = 1;
-        BoxData.BoxStride    = sizeof(Boxes[0]);
-        BoxData.pBoxBuffer   = m_BoxAttribsCB;
-
-        BuildBLASAttribs Attribs;
-        Attribs.pBLAS        = m_pProceduralBLAS;
-        Attribs.pBoxData     = &BoxData;
-        Attribs.BoxDataCount = 1;
-
-        // Scratch buffer will be used to store temporary data during BLAS build.
-        // Previous content in the scratch buffer will be discarded.
-        Attribs.pScratchBuffer = pScratchBuffer;
-
-        // Allow engine to change resource states.
-        Attribs.BLASTransitionMode          = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
-        Attribs.GeometryTransitionMode      = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
-        Attribs.ScratchBufferTransitionMode = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
-
-        m_pImmediateContext->BuildBLAS(Attribs);
-    }
+    BuildBLASAttribs Attribs;
+    Attribs.pBLAS                       = m_pProceduralBLAS;
+    Attribs.pBoxData                    = &BoxDataDesc;
+    Attribs.BoxDataCount                = 1;
+    Attribs.pScratchBuffer              = pScratch;
+    Attribs.BLASTransitionMode          = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
+    Attribs.GeometryTransitionMode      = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
+    Attribs.ScratchBufferTransitionMode = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
+    m_pImmediateContext->BuildBLAS(Attribs);
 }
 
 void Tutorial21_RayTracing::UpdateTLAS()
 {
-    // Create or update top-level acceleration structure
-
-    static constexpr int NumInstances = NumCubes + 3;
+    static constexpr int NumLocalCubes   = 16;
+    static constexpr int NumLocalSpheres = 16;
+    static constexpr int NumInstances    = NumLocalCubes + NumLocalSpheres + 2; // ground + glass
 
     bool NeedUpdate = true;
 
-    // Create TLAS
     if (!m_pTLAS)
     {
         TopLevelASDesc TLASDesc;
         TLASDesc.Name             = "TLAS";
         TLASDesc.MaxInstanceCount = NumInstances;
         TLASDesc.Flags            = RAYTRACING_BUILD_AS_ALLOW_UPDATE | RAYTRACING_BUILD_AS_PREFER_FAST_TRACE;
-
         m_pDevice->CreateTLAS(TLASDesc, &m_pTLAS);
-        VERIFY_EXPR(m_pTLAS != nullptr);
-
-        NeedUpdate = false; // build on first run
-
+        VERIFY_EXPR(m_pTLAS);
+        NeedUpdate = false;
         m_pRayTracingSRB->GetVariableByName(SHADER_TYPE_RAY_GEN, "g_TLAS")->Set(m_pTLAS);
         m_pRayTracingSRB->GetVariableByName(SHADER_TYPE_RAY_CLOSEST_HIT, "g_TLAS")->Set(m_pTLAS);
     }
 
-    // Create scratch buffer
     if (!m_ScratchBuffer)
     {
-        BufferDesc BuffDesc;
-        BuffDesc.Name      = "TLAS Scratch Buffer";
-        BuffDesc.Usage     = USAGE_DEFAULT;
-        BuffDesc.BindFlags = BIND_RAY_TRACING;
-        BuffDesc.Size      = std::max(m_pTLAS->GetScratchBufferSizes().Build, m_pTLAS->GetScratchBufferSizes().Update);
-
-        m_pDevice->CreateBuffer(BuffDesc, nullptr, &m_ScratchBuffer);
-        VERIFY_EXPR(m_ScratchBuffer != nullptr);
+        BufferDesc B;
+        B.Name      = "TLAS Scratch Buffer";
+        B.Usage     = USAGE_DEFAULT;
+        B.BindFlags = BIND_RAY_TRACING;
+        B.Size      = std::max(m_pTLAS->GetScratchBufferSizes().Build, m_pTLAS->GetScratchBufferSizes().Update);
+        m_pDevice->CreateBuffer(B, nullptr, &m_ScratchBuffer);
+        VERIFY_EXPR(m_ScratchBuffer);
     }
 
-    // Create instance buffer
     if (!m_InstanceBuffer)
     {
-        BufferDesc BuffDesc;
-        BuffDesc.Name      = "TLAS Instance Buffer";
-        BuffDesc.Usage     = USAGE_DEFAULT;
-        BuffDesc.BindFlags = BIND_RAY_TRACING;
-        BuffDesc.Size      = TLAS_INSTANCE_DATA_SIZE * NumInstances;
-
-        m_pDevice->CreateBuffer(BuffDesc, nullptr, &m_InstanceBuffer);
-        VERIFY_EXPR(m_InstanceBuffer != nullptr);
+        BufferDesc B;
+        B.Name      = "TLAS Instance Buffer";
+        B.Usage     = USAGE_DEFAULT;
+        B.BindFlags = BIND_RAY_TRACING;
+        B.Size      = TLAS_INSTANCE_DATA_SIZE * NumInstances;
+        m_pDevice->CreateBuffer(B, nullptr, &m_InstanceBuffer);
+        VERIFY_EXPR(m_InstanceBuffer);
     }
 
-    // Setup instances
-    TLASBuildInstanceData Instances[NumInstances] = {};
+    TLASBuildInstanceData Instances[NumInstances];
 
-    struct CubeInstanceData
+    // Cubes around circle
+    for (int i = 0; i < NumLocalCubes; ++i)
     {
-        float3 BasePos;
-        float  TimeOffset;
-    } CubeInstData[] = // clang-format off
+        auto& inst        = Instances[i];
+       // inst.InstanceName = "Cube Instance " + std::to_string(i + 1);
+        inst.CustomId     = i % NumTextures;
+        inst.pBLAS        = m_pCubeBLAS;
+        inst.Mask         = OPAQUE_GEOM_MASK;
+        float angle       = 2 * PI_F * i / NumLocalCubes;
+        float radius      = 5.0f;
+        float x           = std::cos(angle) * radius;
+        float y           = std::sin(m_AnimationTime + i) * 1.0f;
+        float z           = std::sin(angle) * radius;
+        inst.Transform.SetTranslation(x, y, z);
+        inst.Transform.SetRotation(float3x3::RotationY(angle + m_AnimationTime).Data());
+    }
+
+    // Spheres around larger circle
+    for (int i = 0; i < NumLocalSpheres; ++i)
     {
-        {float3{ 1, 1,  1}, 0.00f},
-        {float3{ 2, 0, -1}, 0.53f},
-        {float3{-1, 1,  2}, 1.27f},
-        {float3{-2, 0, -1}, 4.16f}
-    };
+        auto& inst        = Instances[NumLocalCubes + i];
+       // inst.InstanceName = "Sphere Instance " + std::to_string(i + 1);
+        inst.CustomId     = 0;
+        inst.pBLAS        = m_pProceduralBLAS;
+        inst.Mask         = OPAQUE_GEOM_MASK;
+        float angle       = 2 * PI_F * i / NumLocalSpheres;
+        float radius      = 7.0f;
+        float x           = std::cos(angle) * radius;
+        float z           = std::sin(angle) * radius;
+        inst.Transform.SetTranslation(x, -2.0f, z);
+    }
 
-
-
-    // clang-format on
-    static_assert(_countof(CubeInstData) == NumCubes, "Cube instance data array size mismatch");
-
-    const auto AnimateOpaqueCube = [&](TLASBuildInstanceData& Dst) //
+    // Ground
     {
-        float  t     = sin(m_AnimationTime * PI_F * 0.5f) + CubeInstData[Dst.CustomId].TimeOffset;
-        float3 Pos   = CubeInstData[Dst.CustomId].BasePos * 2.0f + float3(sin(t * 1.13f), sin(t * 0.77f), sin(t * 2.15f)) * 0.5f;
-        float  angle = 0.1f * PI_F * (m_AnimationTime + CubeInstData[Dst.CustomId].TimeOffset * 2.0f);
+        auto& g        = Instances[NumLocalCubes + NumLocalSpheres];
+        g.InstanceName = "Ground Instance";
+        g.pBLAS        = m_pCubeBLAS;
+        g.Mask         = OPAQUE_GEOM_MASK;
+        g.Transform.SetRotation(float3x3::Scale(100.0f, 0.1f, 100.0f).Data());
+        g.Transform.SetTranslation(0.0f, -6.0f, 0.0f);
+    }
 
-        if (!m_EnableCubes[Dst.CustomId])
-            Dst.Mask = 0;
+    // Glass cube
+    {
+        auto& gl        = Instances[NumLocalCubes + NumLocalSpheres + 1];
+        gl.InstanceName = "Glass Instance";
+        gl.pBLAS        = m_pCubeBLAS;
+        gl.Mask         = TRANSPARENT_GEOM_MASK;
+        gl.Transform.SetRotation(
+            (float3x3::Scale(1.5f, 1.5f, 1.5f) *
+             float3x3::RotationY(m_AnimationTime * PI_F * 0.25f))
+                .Data());
+        gl.Transform.SetTranslation(3.0f, -4.0f, -5.0f);
+    }
 
-        Dst.Transform.SetTranslation(Pos.x, -Pos.y, Pos.z);
-        Dst.Transform.SetRotation(float3x3::RotationY(angle).Data());
-    };
-
-    // Instancia 0
-    Instances[0].InstanceName = "Sphere Instance 1";
-    Instances[0].CustomId     = 0;
-    Instances[0].pBLAS        = m_pProceduralBLAS; 
-    Instances[0].Mask         = OPAQUE_GEOM_MASK;
-    Instances[0].Transform.SetTranslation(-4.0f, 0.0f, -5.f); 
-
-    // Instancia 1
-    Instances[1].InstanceName = "Sphere Instance 2";
-    Instances[1].CustomId     = 1;
-    Instances[1].pBLAS        = m_pProceduralBLAS; 
-    Instances[1].Mask         = OPAQUE_GEOM_MASK;
-    Instances[1].Transform.SetTranslation(0.0f, 0.0f, -5.f); 
-
-
-    // Instancia 2
-    Instances[2].InstanceName = "Sphere Instance 3";
-    Instances[2].CustomId     = 2;
-    Instances[2].pBLAS        = m_pProceduralBLAS; 
-    Instances[2].Mask         = OPAQUE_GEOM_MASK;
-    Instances[2].Transform.SetTranslation(4.0f, 0.0f, -5.f); 
-
-    // Instancia 3
-    Instances[3].InstanceName = "Sphere Instance 4";
-    Instances[3].CustomId     = 3;
-    Instances[3].pBLAS        = m_pProceduralBLAS; // Correcto
-    Instances[3].Mask         = OPAQUE_GEOM_MASK;
-    Instances[3].Transform.SetTranslation(-4.0f, -4.0f, -5.f); 
-
-    // Instancia 4 (Originalmente Ground Instance)
-    Instances[4].InstanceName = "Ground Instance"; 
-    Instances[4].pBLAS        = m_pCubeBLAS;       
-    Instances[4].Mask         = OPAQUE_GEOM_MASK;
-    
-    Instances[4].Transform.SetRotation(float3x3::Scale(100.0f, 0.1f, 100.0f).Data());
-    Instances[4].Transform.SetTranslation(0.0f, -6.0f, 0.0f);
-
-    // Instancia 5 (Originalmente Sphere Instance)
-    Instances[5].InstanceName = "Sphere Instance"; 
-    Instances[5].CustomId     = 5;                 
-    Instances[5].pBLAS        = m_pProceduralBLAS; 
-    Instances[5].Mask         = OPAQUE_GEOM_MASK;
-    Instances[5].Transform.SetTranslation(-3.0f, -3.0f, -5.f);
-
-    // Instancia 6 (Originalmente Glass Instance)
-    Instances[6].InstanceName = "Glass Instance";  
-    Instances[6].pBLAS        = m_pProceduralBLAS; 
-    Instances[6].Mask         = TRANSPARENT_GEOM_MASK;
-    Instances[6].CustomId     = 6;                    
-    Instances[6].Transform.SetRotation((float3x3::Scale(1.5f, 1.5f, 1.5f) * float3x3::RotationY(m_AnimationTime * PI_F * 0.25f)).Data());
-    Instances[6].Transform.SetTranslation(3.0f, -4.0f, -5.0f);
-
-    // Build or update TLAS
     BuildTLASAttribs Attribs;
-    Attribs.pTLAS  = m_pTLAS;
-    Attribs.Update = NeedUpdate;
-
-    Attribs.pScratchBuffer = m_ScratchBuffer;
-
-    Attribs.pInstanceBuffer = m_InstanceBuffer;
-
-    
-    Attribs.pInstances    = Instances;
-    Attribs.InstanceCount = _countof(Instances);
-
-    
-    Attribs.BindingMode    = HIT_GROUP_BINDING_MODE_PER_INSTANCE;
-    Attribs.HitGroupStride = HIT_GROUP_STRIDE;
-
-    // Allow engine to change resource states.
+    Attribs.pTLAS                        = m_pTLAS;
+    Attribs.Update                       = NeedUpdate;
+    Attribs.pScratchBuffer               = m_ScratchBuffer;
+    Attribs.pInstanceBuffer              = m_InstanceBuffer;
+    Attribs.pInstances                   = Instances;
+    Attribs.InstanceCount                = NumInstances;
+    Attribs.BindingMode                  = HIT_GROUP_BINDING_MODE_PER_INSTANCE;
+    Attribs.HitGroupStride               = HIT_GROUP_STRIDE;
     Attribs.TLASTransitionMode           = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
     Attribs.BLASTransitionMode           = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
     Attribs.InstanceBufferTransitionMode = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
     Attribs.ScratchBufferTransitionMode  = RESOURCE_STATE_TRANSITION_MODE_TRANSITION;
-
     m_pImmediateContext->BuildTLAS(Attribs);
 }
 
 void Tutorial21_RayTracing::CreateSBT()
 {
-    // Create shader binding table.
+    static constexpr int NumLocalCubes   = 16;
+    static constexpr int NumLocalSpheres = 16;
 
     ShaderBindingTableDesc SBTDesc;
     SBTDesc.Name = "SBT";
     SBTDesc.pPSO = m_pRayTracingPSO;
-
     m_pDevice->CreateSBT(SBTDesc, &m_pSBT);
-    VERIFY_EXPR(m_pSBT != nullptr);
+    VERIFY_EXPR(m_pSBT);
 
     m_pSBT->BindRayGenShader("Main");
-
     m_pSBT->BindMissShader("PrimaryMiss", PRIMARY_RAY_INDEX);
     m_pSBT->BindMissShader("ShadowMiss", SHADOW_RAY_INDEX);
 
-    
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Sphere Instance 1", PRIMARY_RAY_INDEX, "SpherePrimaryHit"); 
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Sphere Instance 2", PRIMARY_RAY_INDEX, "SpherePrimaryHit"); 
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Sphere Instance 3", PRIMARY_RAY_INDEX, "SpherePrimaryHit"); 
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Sphere Instance 4", PRIMARY_RAY_INDEX, "SpherePrimaryHit"); 
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Ground Instance", PRIMARY_RAY_INDEX, "GroundHit");          
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Glass Instance", PRIMARY_RAY_INDEX, "GlassPrimaryHit");     
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Sphere Instance", PRIMARY_RAY_INDEX, "SpherePrimaryHit");   
+    for (int i = 0; i < NumLocalCubes; ++i)
+        m_pSBT->BindHitGroupForInstance(m_pTLAS,
+                                        ("Cube Instance " + std::to_string(i + 1)).c_str(),
+                                        PRIMARY_RAY_INDEX, "CubePrimaryHit");
+
+    for (int i = 0; i < NumLocalSpheres; ++i)
+        m_pSBT->BindHitGroupForInstance(m_pTLAS,
+                                        ("Sphere Instance " + std::to_string(i + 1)).c_str(),
+                                        PRIMARY_RAY_INDEX, "SpherePrimaryHit");
+
+    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Ground Instance", PRIMARY_RAY_INDEX, "GroundHit");
+    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Glass Instance", PRIMARY_RAY_INDEX, "GlassPrimaryHit");
 
     m_pSBT->BindHitGroupForTLAS(m_pTLAS, SHADOW_RAY_INDEX, nullptr);
 
- 
-    
-    
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Sphere Instance 1", SHADOW_RAY_INDEX, "SphereShadowHit"); 
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Sphere Instance 2", SHADOW_RAY_INDEX, "SphereShadowHit"); 
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Sphere Instance 3", SHADOW_RAY_INDEX, "SphereShadowHit"); 
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Sphere Instance 4", SHADOW_RAY_INDEX, "SphereShadowHit"); 
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Ground Instance", SHADOW_RAY_INDEX, "GroundHit");         
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Glass Instance", SHADOW_RAY_INDEX, "GlassPrimaryHit");   
-    m_pSBT->BindHitGroupForInstance(m_pTLAS, "Sphere Instance", SHADOW_RAY_INDEX, "SphereShadowHit");   
+    for (int i = 0; i < NumLocalSpheres; ++i)
+        m_pSBT->BindHitGroupForInstance(m_pTLAS,
+                                        ("Sphere Instance " + std::to_string(i + 1)).c_str(),
+                                        SHADOW_RAY_INDEX, "SphereShadowHit");
 
-    // Update SBT with the shader groups we bound
     m_pImmediateContext->UpdateSBT(m_pSBT);
 }
 
@@ -813,8 +649,8 @@ void Tutorial21_RayTracing::Render()
 
     // Update constants
     {
-        float3 CameraWorldPos = float3::MakeVector(m_Camera.GetWorldMatrix()[3]);
-        auto   CameraViewProj = m_Camera.GetViewMatrix() * m_Camera.GetProjMatrix();
+        float3   CameraWorldPos = float3::MakeVector(m_Camera.GetWorldMatrix()[3]);
+        float4x4 CameraViewProj = m_Camera.GetViewMatrix() * m_Camera.GetProjMatrix();
 
         m_Constants.CameraPos   = float4{CameraWorldPos, 1.0f};
         m_Constants.InvViewProj = CameraViewProj.Inverse();
@@ -841,7 +677,7 @@ void Tutorial21_RayTracing::Render()
     {
         m_pImageBlitSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_Texture")->Set(m_pColorRT->GetDefaultView(TEXTURE_VIEW_SHADER_RESOURCE));
 
-        auto* pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
+        ITextureView* pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
         m_pImmediateContext->SetRenderTargets(1, &pRTV, nullptr, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
         m_pImmediateContext->SetPipelineState(m_pImageBlitPSO);
@@ -853,7 +689,7 @@ void Tutorial21_RayTracing::Render()
 
 void Tutorial21_RayTracing::Update(double CurrTime, double ElapsedTime, bool DoUpdateUI)
 {
-    SampleBase::Update(CurrTime, ElapsedTime, DoUpdateUI);
+    SampleBase::Update(CurrTime, ElapsedTime);
 
     if (m_Animate)
     {
@@ -863,7 +699,7 @@ void Tutorial21_RayTracing::Update(double CurrTime, double ElapsedTime, bool DoU
     m_Camera.Update(m_InputController, static_cast<float>(ElapsedTime));
 
     // Do not allow going underground
-    auto oldPos = m_Camera.GetPos();
+    float3 oldPos = m_Camera.GetPos();
     if (oldPos.y < -5.7f)
     {
         oldPos.y = -5.7f;
@@ -917,10 +753,11 @@ void Tutorial21_RayTracing::UpdateUI()
         ImGui::SliderInt("Shadow blur", &m_Constants.ShadowPCF, 0, 16);
         ImGui::SliderInt("Max recursion", &m_Constants.MaxRecursion, 0, m_MaxRecursionDepth);
 
+        // Ahora mostramos 16 checkboxes, uno por cada cubo
         for (int i = 0; i < NumCubes; ++i)
         {
-            ImGui::Checkbox(("Cube " + std::to_string(i)).c_str(), &m_EnableCubes[i]);
-            if (i + 1 < NumCubes)
+            ImGui::Checkbox(("Cube " + std::to_string(i + 1)).c_str(), &m_EnableCubes[i]);
+            if ((i + 1) % 8 != 0) // ejemplo de dos filas de 8
                 ImGui::SameLine();
         }
 
