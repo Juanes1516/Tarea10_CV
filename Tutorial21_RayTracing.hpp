@@ -46,14 +46,14 @@ public:
     virtual void Initialize(const SampleInitInfo& InitInfo) override final;
 
     virtual void Render() override final;
-    virtual void Update(double CurrTime, double ElapsedTime, bool DoUpdateUI) override final;
+    virtual void Update(double CurrTime, double ElapsedTime, bool DoUpdateUI)  final;
 
     virtual const Char* GetSampleName() const override final { return "Tutorial21: Ray tracing"; }
 
     virtual void WindowResize(Uint32 Width, Uint32 Height) override final;
 
 protected:
-    virtual void UpdateUI() override final;
+    virtual void UpdateUI()  final;
 
 private:
     void CreateRayTracingPSO();
@@ -65,7 +65,9 @@ private:
     void LoadTextures();
 
     static constexpr int NumTextures = 4;
-    static constexpr int NumCubes    = 4;
+    static constexpr int NumCubes    = 16;
+
+    bool m_EnableCubes[NumCubes] = {};
 
     RefCntAutoPtr<IBuffer> m_CubeAttribsCB;
     RefCntAutoPtr<IBuffer> m_BoxAttribsCB;
@@ -91,6 +93,7 @@ private:
     bool            m_EnableCubes[NumCubes] = {true, true, true, true};
     bool            m_Animate               = true;
     float           m_DispersionFactor      = 0.1f;
+
 
     FirstPersonCamera m_Camera;
 
