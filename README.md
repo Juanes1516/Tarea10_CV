@@ -1,5 +1,6 @@
 # Título del Proyecto
 
+![Prueba](https://github.com/user-attachments/assets/fd97dadd-1d78-4f13-b530-b51277718b42)
 
 ## 📝 Descripción
 
